@@ -26,9 +26,13 @@ export interface IslandData {
 }
 
 const WORLD_SCALE = 220;
-const HEIGHT_SCALE = 8; // gentler than the 14-peak version, still visibly hilly
+const HEIGHT_SCALE = 10; // more pronounced hills so the island reads as solid land, not a wafer
 const NOISE_FREQ = 0.028;
 const RADIAL_POWER = 1.8;
+// Land floor — hard cliff base. Sits well above water (y=-2.5) so the
+// shoreline is a tall, opaque bank rather than gentle wading.
+const LAND_FLOOR = 1.2;
+const SHELF_FLOOR = -3.5;
 
 // Distinct biome zones layered on top of height-based biomes.
 // Coords are world-space (same axes as buildIslandData output).
@@ -52,13 +56,20 @@ export function buildIslandData(opts: IslandGenOptions): IslandData {
       const falloff = smoothFalloff(r);
 
       const n = fbm2D(seed, x * NOISE_FREQ, z * NOISE_FREQ, 6);
-      // Subtract a sea-level bias before scaling so low-noise + low-falloff
-      // areas drop *below* zero — they become the underwater shelf.
-      let h = (n - 0.18) * falloff * HEIGHT_SCALE - (1 - falloff) * 1.5;
-      // Central plateau guarantees a viable spawn area on land
-      if (r < 0.30) h = Math.max(h, 1.4);
-      // Lift very-near-shore land slightly so beaches stay above water
-      if (h > 0 && h < 0.35) h = 0.35;
+      let h = n * falloff * HEIGHT_SCALE;
+      // Radial sea shelf — pulls outer ring well underwater
+      if (r > 0.55) {
+        const t = (r - 0.55) / 0.45;
+        h -= t * t * 7.0;
+      }
+      // Central plateau guarantees a viable spawn area, well above cliff base
+      if (r < 0.30) h = Math.max(h, LAND_FLOOR + 0.8);
+      // Hard cliff at the shoreline — every cell is either solid land
+      // (>= LAND_FLOOR above water plane y=-2.5) or solid underwater shelf
+      // (<= SHELF_FLOOR). No in-between heights → no visual blending where
+      // shore terrain dips into the water surface.
+      if (h >= 0 && h < LAND_FLOOR) h = LAND_FLOOR;
+      else if (h < 0 && h > SHELF_FLOOR) h = SHELF_FLOOR;
 
       // World-space coords for biome zone overrides
       const wx = (x - half) * cellSize;
@@ -68,7 +79,7 @@ export function buildIslandData(opts: IslandGenOptions): IslandData {
       // Swamp zone: low-elevation override; flatten the noise floor a bit.
       const swampD2 = (wx - SWAMP_ZONE.x) ** 2 + (wz - SWAMP_ZONE.z) ** 2;
       if (h > 0 && swampD2 < SWAMP_ZONE.radius * SWAMP_ZONE.radius) {
-        h = Math.min(h, 0.9 + n * 0.6);
+        h = Math.min(h, LAND_FLOOR + 0.4 + n * 0.6);
         biome = Biome.Swamp;
       }
       // Alien crash zone: override to AlienCrashSite biome

@@ -5,9 +5,13 @@ import type { PickupRegistry } from "../game/systems/PickupRegistry";
 import type { PickupRenderer } from "./PickupRenderer";
 import type { Inventory } from "../game/systems/Inventory";
 import type { HudManager } from "../ui/hud/HudManager";
-import { ITEMS } from "../game/data/items";
+import { ITEMS, ItemType } from "../game/data/items";
+import type { Audio } from "./Audio";
 
 const PICKUP_RADIUS = 2.5;
+// Items that should sound metallic on pickup. Mirrors the metallic set in
+// PickupRenderer so audio + visual stay aligned.
+const METAL_ITEMS = new Set(["iron_ore", "iron_ingot", "shiny_trinket"]);
 
 /**
  * Each frame:
@@ -22,6 +26,7 @@ export class InteractionDetector {
   private readonly hud: HudManager;
   private readonly playerRoot: TransformNode;
   private readonly input: InputManager;
+  private readonly audio: Audio;
 
   constructor(
     _scene: Scene,
@@ -31,6 +36,7 @@ export class InteractionDetector {
     renderer: PickupRenderer,
     inv: Inventory,
     hud: HudManager,
+    audio: Audio,
   ) {
     this.playerRoot = playerRoot;
     this.input = input;
@@ -38,6 +44,7 @@ export class InteractionDetector {
     this.renderer = renderer;
     this.inv = inv;
     this.hud = hud;
+    this.audio = audio;
   }
 
   tick(suppressed = false) {
@@ -66,6 +73,12 @@ export class InteractionDetector {
       // drinking is a separate action: equip the item on the hotbar then
       // press F to use it.
       this.inv.add(nearest.itemId, 1);
+      const material = METAL_ITEMS.has(nearest.itemId)
+        ? "metal"
+        : ITEMS[nearest.itemId]?.type === ItemType.Consumable
+          ? "consumable"
+          : "resource";
+      this.audio.playPickup(material);
       this.hud.hidePrompt();
     }
   }

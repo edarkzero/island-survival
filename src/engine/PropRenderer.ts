@@ -34,14 +34,14 @@ export class PropRenderer {
     trunk.position.y = 1.5;
     trunk.bakeCurrentTransformIntoVertices();
     const trunkMat = new PBRMaterial("trunkMat", scene);
-    trunkMat.albedoColor = new Color3(0.32, 0.22, 0.14);
+    trunkMat.albedoColor = new Color3(0.38, 0.24, 0.12); // warm brown bark
     trunkMat.metallic = 0.0;
     trunkMat.roughness = 0.95;
     trunk.material = trunkMat;
 
     // Canopy: single tall cone for stylized pine
     const canopyMat = new PBRMaterial("canopyMat", scene);
-    canopyMat.albedoColor = new Color3(0.18, 0.36, 0.20);
+    canopyMat.albedoColor = new Color3(0.16, 0.50, 0.20); // rich pine green
     canopyMat.metallic = 0.0;
     canopyMat.roughness = 0.9;
 
@@ -83,9 +83,10 @@ export class PropRenderer {
       scene,
     );
     const mat = new PBRMaterial(`rockMat_${size}`, scene);
-    mat.albedoColor = size === "small" ? new Color3(0.32, 0.32, 0.34) : new Color3(0.36, 0.34, 0.32);
+    // Clean neutral granite gray — large boulders slightly lighter for depth read.
+    mat.albedoColor = size === "small" ? new Color3(0.48, 0.48, 0.50) : new Color3(0.58, 0.58, 0.60);
     mat.metallic = 0.0;
-    mat.roughness = 0.95;
+    mat.roughness = 0.92;
     base.material = mat;
 
     const matrices = new Float32Array(rocks.length * 16);

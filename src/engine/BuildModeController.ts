@@ -9,6 +9,7 @@ import type { BuildingRegistry } from "../game/systems/Building";
 import type { BuildingRenderer } from "./BuildingRenderer";
 import type { Inventory } from "../game/systems/Inventory";
 import type { HudManager } from "../ui/hud/HudManager";
+import type { Audio } from "./Audio";
 import { BUILDINGS } from "../game/data/buildings";
 
 const PLACEABLES = ["foundation", "wall", "roof", "campfire", "workbench", "forge"];
@@ -34,6 +35,7 @@ export class BuildModeController {
   private readonly inv: Inventory;
   private readonly hud: HudManager;
   private readonly playerRoot: TransformNode;
+  private readonly audio: Audio;
 
   constructor(
     scene: Scene,
@@ -45,6 +47,7 @@ export class BuildModeController {
     inv: Inventory,
     hud: HudManager,
     playerRoot: TransformNode,
+    audio: Audio,
   ) {
     this.camera = camera;
     this.input = input;
@@ -54,6 +57,7 @@ export class BuildModeController {
     this.inv = inv;
     this.hud = hud;
     this.playerRoot = playerRoot;
+    this.audio = audio;
 
     // POINTERTAP fires only on a click that didn't drag, so the camera can
     // still orbit on left-mouse drag without accidentally placing a piece.
@@ -118,6 +122,7 @@ export class BuildModeController {
     if (!this.inv.removeAll(def.cost)) return;
     const placed = this.registry.add(buildingId, snap.x, snap.y, snap.z, 0);
     this.renderer.spawn(placed);
+    this.audio.playBuildPlace();
   }
 
   private computeTarget(): Vector3 | null {

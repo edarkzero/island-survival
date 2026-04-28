@@ -4,6 +4,10 @@ import { craft, evaluateRecipes } from "../../game/systems/Crafting";
 import { ITEMS } from "../../game/data/items";
 import { Station } from "../../game/data/recipes";
 
+export interface CraftingMenuHooks {
+  onCraftSuccess?: () => void;
+}
+
 const STATION_LABEL: Record<string, string> = {
   hand: "Hand",
   workbench: "Workbench",
@@ -20,11 +24,13 @@ export class CraftingMenu {
   private readonly root: HTMLElement;
   private readonly inv: Inventory;
   private readonly getCtx: () => CraftingContext;
+  private readonly hooks: CraftingMenuHooks;
   open = false;
 
-  constructor(inv: Inventory, getCtx: () => CraftingContext) {
+  constructor(inv: Inventory, getCtx: () => CraftingContext, hooks: CraftingMenuHooks = {}) {
     this.inv = inv;
     this.getCtx = getCtx;
+    this.hooks = hooks;
     this.root = document.createElement("div");
     this.root.id = "crafting-menu";
     this.root.hidden = true;
@@ -102,7 +108,10 @@ export class CraftingMenu {
     if (row && row.dataset.craftable === "true") {
       const id = row.dataset.recipe!;
       const result = craft(id, this.inv, this.getCtx());
-      if (result.ok) this.render();
+      if (result.ok) {
+        this.hooks.onCraftSuccess?.();
+        this.render();
+      }
     }
   };
 }

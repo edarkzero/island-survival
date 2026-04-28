@@ -7,6 +7,7 @@ import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import { Color3, Color4, Vector3 } from "@babylonjs/core/Maths/math";
 import type { SurvivalState } from "../game/systems/SurvivalState";
 import type { Inventory } from "../game/systems/Inventory";
+import type { Audio } from "./Audio";
 
 const FLARE_TEX_URL = "https://playground.babylonjs.com/textures/flare.png";
 
@@ -25,6 +26,7 @@ export class WeatherSystem {
   private readonly playerRoot: TransformNode;
   private readonly survival: SurvivalState;
   private readonly inv: Inventory;
+  private readonly audio: Audio;
   private rain: GPUParticleSystem | ParticleSystem | null = null;
   private isRaining = false;
   private cycleSeconds = 0;
@@ -32,11 +34,18 @@ export class WeatherSystem {
   private savedFogColor: Color3 | null = null;
   private savedFogDensity = 0;
 
-  constructor(scene: Scene, playerRoot: TransformNode, survival: SurvivalState, inv: Inventory) {
+  constructor(
+    scene: Scene,
+    playerRoot: TransformNode,
+    survival: SurvivalState,
+    inv: Inventory,
+    audio: Audio,
+  ) {
     this.scene = scene;
     this.playerRoot = playerRoot;
     this.survival = survival;
     this.inv = inv;
+    this.audio = audio;
   }
 
   tick(dt: number) {
@@ -82,6 +91,7 @@ export class WeatherSystem {
         this.scene.fogDensity = this.savedFogDensity;
       }
     }
+    this.audio.setRain(on);
   }
 
   private createRainSystem(): GPUParticleSystem | ParticleSystem {

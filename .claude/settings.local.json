@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -l -i \"phase 4\\\\|sound\\\\|audio\\\\|sfx\" \"C:\\\\Users\\\\Edgar\\\\.claude\\\\projects\\\\C--Users-Edgar-Develop-island-survival\\\\\\\\\"*.jsonl)",
+      "Bash(ls \"C:\\\\Users\\\\Edgar\\\\.claude\\\\projects\\\\C--Users-Edgar-Develop-island-survival\\\\\\\\\")"
+    ]
+  }
+}

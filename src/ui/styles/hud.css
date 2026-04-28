@@ -562,6 +562,78 @@ html, body {
   color: var(--hud-fg);
 }
 
+/* ---- Audio mixer panel ---- */
+#audio-mixer {
+  position: fixed;
+  top: 18px;
+  left: 130px;
+  z-index: 40;
+  pointer-events: auto;
+}
+#audio-mixer button {
+  background: var(--hud-bg-strong);
+  color: var(--hud-fg);
+  border: 1px solid var(--hud-border);
+  border-radius: 3px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+#audio-mixer.expanded {
+  background: var(--hud-bg-strong);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+  padding: 10px 12px 12px;
+  width: 220px;
+  color: var(--hud-fg);
+}
+#audio-mixer.expanded button {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  padding: 0 4px;
+}
+#audio-mixer h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hud-accent);
+}
+#audio-mixer table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+#audio-mixer th {
+  text-align: left;
+  padding: 4px 8px 4px 0;
+  color: var(--hud-fg);
+  font-weight: 500;
+  white-space: nowrap;
+}
+#audio-mixer td {
+  padding: 4px 0;
+  color: var(--hud-fg);
+}
+#audio-mixer input[type="range"] {
+  width: 100%;
+  vertical-align: middle;
+}
+#audio-mixer .mixer-value {
+  width: 26px;
+  text-align: right;
+  color: var(--hud-fg-dim);
+  padding-left: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Controls help panel ---- */
 #controls-help {
   position: fixed;

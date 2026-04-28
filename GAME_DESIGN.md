@@ -111,7 +111,9 @@ All HUD is plain HTML/CSS overlay — see `src/ui/styles/hud.css` and `src/ui/hu
 - Day/night cycle with HDRI/SkyMaterial lerp.
 - Weather (rain, fog).
 - Stamina mechanic.
-- Compass + waypoint markers.
+- Compass + waypoint markers (base waypoint with edge-clamped bearing arrows).
+- Shore foam at the actual coastline (flood-fill from ocean cells, not a uniform ring).
+- Audio: per-biome ambient crossfade, footsteps that change with the surface underfoot, combat / pickup / craft / build / weather sound hooks, in-game mixer with persisted volumes. SFX use real Kenney RPG Audio (CC0); biome ambient stems and rain bed remain procedural until matching CC0 ambient packs are sourced.
 
 Deferred to v2: photo mode, mini-map (full screen), fast travel, multiplayer, branching alien dialogue.
 
@@ -123,6 +125,7 @@ Deferred to v2: photo mode, mini-map (full screen), fast travel, multiplayer, br
 - **Phase 4:** Approach Scrunkler → "wants berry" icon → give → friendly + follows. Approach Glarn → it attacks → sleep-dart KO → give iron ingot → friendly.
 - **Phase 5:** Subjective beauty pass — sunrise/sunset visible, shore foam, grass sways.
 - **Phase 6:** Rain triggers, fills containers, compass shows base waypoint.
+- **Phase 7:** Audio plays — UI clicks on menu toggle, swing/hit on combat, footsteps that change with the biome, ambient bed crossfades on biome transition, rain bed fades in/out with weather. SFX are real OGGs from `src/engine/AudioRegistry.ts` (Kenney RPG Audio); ambient + rain are still procedural. Mixer (top-left) adjusts levels and persists across reload.
 
 ## 12. Port notes (when moving to Unity / Unreal)
 

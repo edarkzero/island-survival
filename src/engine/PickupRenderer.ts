@@ -7,12 +7,21 @@ import type { ShadowSystem } from "./ShadowSystem";
 import type { Pickup, PickupRegistry } from "../game/systems/PickupRegistry";
 
 const COLORS: Record<string, [number, number, number]> = {
-  berry: [0.85, 0.18, 0.26],
-  water_flask: [0.35, 0.7, 0.92],
-  fiber: [0.85, 0.78, 0.45],
-  wood: [0.55, 0.35, 0.18],
-  stone: [0.55, 0.55, 0.55],
+  berry: [0.55, 0.20, 0.75],            // ripe purple
+  water_flask: [0.35, 0.70, 0.92],      // clear blue
+  fiber: [0.85, 0.78, 0.45],            // dry straw
+  wood: [0.45, 0.28, 0.14],             // bark brown
+  stone: [0.55, 0.55, 0.55],            // neutral gray
+  iron_ore: [0.50, 0.42, 0.36],         // rusty raw ore
+  iron_ingot: [0.78, 0.78, 0.82],       // bright metallic silver
+  alien_crystal: [0.45, 0.85, 0.95],    // glowing cyan
+  bioluminescent_moss: [0.30, 0.95, 0.55], // glowing green
+  shiny_trinket: [0.95, 0.85, 0.30],    // gold
+  cooked_meat: [0.65, 0.30, 0.20],      // cooked brown-red
 };
+
+// Items that should render as polished metal rather than matte resource.
+const METALLIC = new Set(["iron_ore", "iron_ingot", "shiny_trinket"]);
 
 /**
  * Renders pickup meshes (small spheres tinted by item type) and animates
@@ -48,8 +57,13 @@ export class PickupRenderer {
     const c = COLORS[p.itemId] ?? [1, 0, 1];
     mat.albedoColor = new Color3(c[0], c[1], c[2]);
     mat.emissiveColor = new Color3(c[0] * 0.15, c[1] * 0.15, c[2] * 0.15);
-    mat.metallic = 0.0;
-    mat.roughness = 0.4;
+    if (METALLIC.has(p.itemId)) {
+      mat.metallic = 0.9;
+      mat.roughness = 0.25;
+    } else {
+      mat.metallic = 0.0;
+      mat.roughness = 0.4;
+    }
     mesh.material = mat;
     this.shadows.addCaster(mesh);
     this.meshes.set(p.id, mesh);

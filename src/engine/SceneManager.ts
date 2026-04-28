@@ -1,3 +1,7 @@
+// Side-effect: registers AbstractEngine.AudioEngineFactory so the legacy
+// AudioEngine is constructed below when `audioEngine: true` is passed to
+// the Engine constructor. Import must run before `new Engine(...)`.
+import "@babylonjs/core/Audio/audioEngine";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { Vector3, Color3, Color4 } from "@babylonjs/core/Maths/math";
@@ -18,6 +22,7 @@ export class SceneManager {
       stencil: true,
       antialias: true,
       adaptToDeviceRatio: true,
+      audioEngine: true,
     });
 
     this.scene = new Scene(this.engine);

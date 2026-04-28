@@ -13,6 +13,7 @@ import type { Inventory } from "../game/systems/Inventory";
 import type { Equipment } from "../game/systems/Equipment";
 import type { AlienManager } from "../game/systems/AlienManager";
 import type { TerrainRenderer } from "./TerrainRenderer";
+import type { Audio } from "./Audio";
 
 const FLARE_TEX_URL = "https://playground.babylonjs.com/textures/flare.png";
 
@@ -41,6 +42,7 @@ export class ProjectileSystem {
   private readonly aliens: AlienManager;
   private readonly playerRoot: TransformNode;
   private readonly terrain: TerrainRenderer;
+  private readonly audio: Audio;
   private readonly active: Projectile[] = [];
 
   constructor(
@@ -52,6 +54,7 @@ export class ProjectileSystem {
     aliens: AlienManager,
     playerRoot: TransformNode,
     terrain: TerrainRenderer,
+    audio: Audio,
   ) {
     this.scene = scene;
     this.camera = camera;
@@ -61,6 +64,7 @@ export class ProjectileSystem {
     this.aliens = aliens;
     this.playerRoot = playerRoot;
     this.terrain = terrain;
+    this.audio = audio;
   }
 
   tick(dt: number, suppressed = false) {
@@ -86,6 +90,7 @@ export class ProjectileSystem {
         const d2 = dx * dx + dz * dz + dyDelta * dyDelta;
         if (d2 < HIT_RADIUS * HIT_RADIUS) {
           this.aliens.applyDamage(a, RANGED_SLEEP_DAMAGE, "sleep");
+          this.audio.playDart("hit");
           hit = true;
           break;
         }
@@ -111,6 +116,7 @@ export class ProjectileSystem {
     if (equipped !== "sleep_dart") return;
     if (!this.inv.has("sleep_dart", 1)) return;
     this.inv.remove("sleep_dart", 1);
+    this.audio.playDart("fire");
 
     const fwd = this.camera.getDirection(Vector3.Forward());
     fwd.normalize();

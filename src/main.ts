@@ -29,7 +29,10 @@ import { BuildModeController } from "./engine/BuildModeController";
 import { CraftingMenu } from "./ui/menus/CraftingMenu";
 import { InventoryMenu } from "./ui/menus/InventoryMenu";
 import { ControlsHelp } from "./ui/menus/ControlsHelp";
+import { AudioMixer } from "./ui/menus/AudioMixer";
 import { HudManager } from "./ui/hud/HudManager";
+import { Audio } from "./engine/Audio";
+import { SOUND_DEFS } from "./engine/AudioRegistry";
 
 const ISLAND_SEED = 1337;
 const ISLAND_SIZE = 256;
@@ -48,7 +51,7 @@ async function bootstrap() {
 
   const islandData = buildIslandData({ seed: ISLAND_SEED, size: ISLAND_SIZE });
   const terrain = new TerrainRenderer(scene, islandData, shadows);
-  const water = new WaterRenderer(scene, terrain.mesh);
+  const water = new WaterRenderer(scene, islandData);
 
   const props = spawnProps(islandData);
   console.info(`Spawned ${props.length} props`);
@@ -90,6 +93,16 @@ async function bootstrap() {
 
   const hud = new HudManager();
   hud.setHotbarFromEquipment(equipment.hotbar, equipment.activeIndex);
+  // Spawn point doubles as the base waypoint until a campfire is placed.
+  hud.setWaypoint("base", "Base", spawn.x, spawn.z);
+
+  const audio = new Audio(scene);
+  audio.defineAll(SOUND_DEFS);
+  // Browsers block audio until the first user gesture; force-resume on
+  // pointer or key input so spatial sounds and ambient stems can start.
+  const resume = () => audio.resume();
+  window.addEventListener("pointerdown", resume, { once: true });
+  window.addEventListener("keydown", resume, { once: true });
 
   const interactions = new InteractionDetector(
     scene,
@@ -99,6 +112,7 @@ async function bootstrap() {
     pickupRenderer,
     inv,
     hud,
+    audio,
   );
 
   const buildMode = new BuildModeController(
@@ -111,32 +125,81 @@ async function bootstrap() {
     inv,
     hud,
     player.root,
+    audio,
   );
+
+  // Biome ambient — sample where the player stands; on change, crossfade
+  // the procedural ambient bed. Sampled at 1Hz rather than per-frame
+  // because biome transitions are slow and ambient changes should be too.
+  const BIOME_NAMES = ["ocean", "beach", "grassland", "forest", "highlands", "aliencrashsite", "swamp"];
+  // Maps biome name → footstep material. Walking through Forest sounds the
+  // same as Grassland since both are loamy underfoot.
+  const FOOTSTEP_BY_BIOME: Record<string, "grass" | "sand" | "stone" | "wet" | "metal"> = {
+    beach: "sand",
+    grassland: "grass",
+    forest: "grass",
+    highlands: "stone",
+    swamp: "wet",
+    aliencrashsite: "metal",
+    ocean: "wet",
+    default: "grass",
+  };
+  let biomeAccum = 0;
+  let lastBiomeName: string | null = null;
+  let currentBiomeName = "default";
+  const sampleBiome = () => {
+    const id = terrain.biomeAt(player.root.position.x, player.root.position.z);
+    const name = BIOME_NAMES[id] ?? "default";
+    currentBiomeName = name;
+    if (name !== lastBiomeName) {
+      audio.setAmbientSynth(name);
+      lastBiomeName = name;
+    }
+  };
+
+  // Footsteps — fire on a stride cadence while the player is moving. Faster
+  // cadence while sprinting; material picked from current biome.
+  const STEP_INTERVAL_WALK = 0.45;
+  const STEP_INTERVAL_SPRINT = 0.30;
+  let stepAccum = 0;
 
   const combat = new CombatController(
-    input, aliens, alienRenderer, inv, equipment, survival, player.root, camera, hud,
+    input, aliens, alienRenderer, inv, equipment, survival, player.root, camera, hud, audio,
   );
   const projectiles = new ProjectileSystem(
-    scene, camera, input, inv, equipment, aliens, player.root, terrain,
+    scene, camera, input, inv, equipment, aliens, player.root, terrain, audio,
   );
-  const weather = new WeatherSystem(scene, player.root, survival, inv);
+  const weather = new WeatherSystem(scene, player.root, survival, inv, audio);
 
-  const crafting = new CraftingMenu(inv, () => ({
-    nearbyStations: buildings.nearbyStations(player.root.position.x, player.root.position.z),
-  }));
+  const crafting = new CraftingMenu(
+    inv,
+    () => ({
+      nearbyStations: buildings.nearbyStations(player.root.position.x, player.root.position.z),
+    }),
+    { onCraftSuccess: () => audio.playCraftSuccess() },
+  );
   const inventoryMenu = new InventoryMenu(inv);
   new ControlsHelp();
+  new AudioMixer(audio);
 
   configureRenderingPipeline(scene, camera);
 
   scene.onBeforeRenderObservable.add(() => {
     const dt = scene.getEngine().getDeltaTime() / 1000;
 
-    if (input.wasJustPressed("craft")) crafting.toggle();
-    if (input.wasJustPressed("inventory")) inventoryMenu.toggle();
+    if (input.wasJustPressed("craft")) {
+      crafting.toggle();
+      audio.playClick(crafting.open ? "open" : "close");
+    }
+    if (input.wasJustPressed("inventory")) {
+      inventoryMenu.toggle();
+      audio.playClick(inventoryMenu.open ? "open" : "close");
+    }
     if (input.wasJustPressed("cancel")) {
+      const wasOpen = crafting.open || inventoryMenu.open;
       if (crafting.open) crafting.toggle(false);
       if (inventoryMenu.open) inventoryMenu.toggle(false);
+      if (wasOpen) audio.playClick("cancel");
     }
     if (inventoryMenu.open) inventoryMenu.refresh();
 
@@ -148,6 +211,7 @@ async function bootstrap() {
           | "slot6" | "slot7" | "slot8" | "slot9";
         if (input.wasJustPressed(action)) {
           equipment.setActive(i);
+          audio.playClick("select");
         }
       }
     }
@@ -163,6 +227,24 @@ async function bootstrap() {
     combat.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
     projectiles.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
     weather.tick(dt);
+
+    biomeAccum += dt;
+    if (biomeAccum >= 1.0) {
+      biomeAccum = 0;
+      sampleBiome();
+    }
+
+    if (player.isMoving()) {
+      stepAccum += dt;
+      const interval = player.isSprinting() ? STEP_INTERVAL_SPRINT : STEP_INTERVAL_WALK;
+      if (stepAccum >= interval) {
+        stepAccum = 0;
+        audio.playFootstep(FOOTSTEP_BY_BIOME[currentBiomeName] ?? "grass");
+      }
+    } else {
+      // Reset cadence so the first step after standing fires near-immediately.
+      stepAccum = STEP_INTERVAL_WALK * 0.7;
+    }
 
     // Tiny camera-shake while a swing flash is active — reads combat.swingFlash
     if (combat.swingFlash > 0) {
@@ -191,7 +273,7 @@ async function bootstrap() {
     equipment.sync(inv);
     hud.setHotbarFromEquipment(equipment.hotbar, equipment.activeIndex);
 
-    hud.updateCompass(camera.alpha);
+    hud.updateCompass(camera.alpha, player.root.position.x, player.root.position.z);
   });
 
   scene.onAfterRenderObservable.addOnce(() => hud.hideLoading());
@@ -218,6 +300,7 @@ async function bootstrap() {
       equipment,
       projectiles,
       weather,
+      audio,
     };
   }
 

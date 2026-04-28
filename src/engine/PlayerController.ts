@@ -24,6 +24,13 @@ const CHARACTER_SCALE = 0.08; // HVGirl is ~22u tall by default → ~1.8m
 
 export class PlayerController {
   readonly root: TransformNode;
+  /**
+   * Yaw-only wrapper: HVGirl's animations animate her own root's
+   * rotation, which would clobber our facing math. By parenting the
+   * character INSIDE this wrapper and rotating the wrapper instead,
+   * the animation is free to do what it wants without affecting yaw.
+   */
+  private yawWrapper: TransformNode | null = null;
   private placeholderMesh: AbstractMesh | null;
   private characterRoot: AbstractMesh | null = null;
   private idleAnim: AnimationGroup | null = null;
@@ -88,10 +95,15 @@ export class PlayerController {
       );
       const character = result.meshes[0];
       character.name = "playerCharacter";
-      character.parent = this.root;
+
+      // Build the wrapper now that we know we have a character to attach.
+      const wrapper = new TransformNode("playerYawWrapper", this.scene);
+      wrapper.parent = this.root;
+      character.parent = wrapper;
       character.position.set(0, 0, 0);
       character.scaling.setAll(CHARACTER_SCALE);
       character.rotation.set(0, 0, 0);
+      this.yawWrapper = wrapper;
       this.characterRoot = character;
 
       for (const m of result.meshes) {
@@ -184,8 +196,9 @@ export class PlayerController {
       const delta = wrapAngle(targetYaw - this.facing);
       this.facing += delta * Math.min(1, TURN_LERP * dt);
     }
-    // HVGirl's natural-rotation forward is -Z, so add π to face camForward.
-    if (this.characterRoot) this.characterRoot.rotation.y = this.facing + Math.PI;
+    // Rotate the WRAPPER, not the character — animations on the character
+    // would otherwise overwrite rotation.y every frame.
+    if (this.yawWrapper) this.yawWrapper.rotation.y = this.facing + Math.PI;
     else if (this.placeholderMesh) this.placeholderMesh.rotation.y = this.facing;
 
     this.camera.target.copyFrom(

@@ -11,6 +11,7 @@ import { resolveAttack } from "../game/systems/Combat";
 import { ITEMS, ItemType } from "../game/data/items";
 import type { SurvivalState } from "../game/systems/SurvivalState";
 import type { HudManager } from "../ui/hud/HudManager";
+import type { Audio } from "./Audio";
 
 const ATTACK_RANGE = 2.6;
 const GIVE_RANGE = 4.0;
@@ -31,6 +32,7 @@ export class CombatController {
   private readonly playerRoot: TransformNode;
   private readonly camera: ArcRotateCamera;
   private readonly hud: HudManager;
+  private readonly audio: Audio;
   /** Counts up; >0 means a swing visual is currently active (consumed by feedback layer). */
   swingFlash = 0;
 
@@ -44,6 +46,7 @@ export class CombatController {
     playerRoot: TransformNode,
     camera: ArcRotateCamera,
     hud: HudManager,
+    audio: Audio,
   ) {
     this.input = input;
     this.aliens = aliens;
@@ -54,6 +57,7 @@ export class CombatController {
     this.playerRoot = playerRoot;
     this.camera = camera;
     this.hud = hud;
+    this.audio = audio;
   }
 
   tick(dt: number, suppressed = false) {
@@ -109,9 +113,11 @@ export class CombatController {
     // Otherwise: swing weapon at nearest in-front alien
     this.swingFlash = 0.18;
     const target = this.alienRenderer.pickNearestInFront(px, pz, fwd.x, fwd.z, ATTACK_RANGE);
-    if (!target) return;
     const atk = resolveAttack(equippedId, this.inv);
+    this.audio.playSwing(atk.kind);
+    if (!target) return;
     const result = this.aliens.applyDamage(target, atk.damage, atk.kind);
+    this.audio.playHit("flesh");
     if (result === "killed") this.aliens.despawn(target);
   }
 

@@ -1,0 +1,232 @@
+import "@babylonjs/loaders/glTF";
+import { SceneManager } from "./engine/SceneManager";
+import { configureRenderingPipeline } from "./engine/RenderingPipeline";
+import { InputManager } from "./engine/InputManager";
+import { buildIslandData } from "./game/world/IslandGenerator";
+import { TerrainRenderer } from "./engine/TerrainRenderer";
+import { WaterRenderer } from "./engine/WaterRenderer";
+import { ShadowSystem } from "./engine/ShadowSystem";
+import { DayNightCycle } from "./engine/DayNightCycle";
+import { PlayerController } from "./engine/PlayerController";
+import { PickupRegistry } from "./game/systems/PickupRegistry";
+import { spawnPickups } from "./game/world/PickupSpawner";
+import { PickupRenderer } from "./engine/PickupRenderer";
+import { spawnProps, getAlienShipPosition } from "./game/world/PropSpawner";
+import { PropRenderer } from "./engine/PropRenderer";
+import { GrassRenderer } from "./engine/GrassRenderer";
+import { AlienManager } from "./game/systems/AlienManager";
+import { AlienRenderer } from "./engine/AlienRenderer";
+import { CombatController } from "./engine/CombatController";
+import { ProjectileSystem } from "./engine/ProjectileSystem";
+import { WeatherSystem } from "./engine/WeatherSystem";
+import { SurvivalState } from "./game/systems/SurvivalState";
+import { InteractionDetector } from "./engine/InteractionDetector";
+import { Inventory } from "./game/systems/Inventory";
+import { Equipment } from "./game/systems/Equipment";
+import { BuildingRegistry } from "./game/systems/Building";
+import { BuildingRenderer } from "./engine/BuildingRenderer";
+import { BuildModeController } from "./engine/BuildModeController";
+import { CraftingMenu } from "./ui/menus/CraftingMenu";
+import { InventoryMenu } from "./ui/menus/InventoryMenu";
+import { ControlsHelp } from "./ui/menus/ControlsHelp";
+import { HudManager } from "./ui/hud/HudManager";
+
+const ISLAND_SEED = 1337;
+const ISLAND_SIZE = 256;
+
+async function bootstrap() {
+  const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement | null;
+  if (!canvas) throw new Error("renderCanvas not found in DOM");
+
+  const sceneMgr = new SceneManager(canvas);
+  const { scene, camera, sun } = sceneMgr;
+
+  const dayNight = new DayNightCycle(scene, sun);
+  dayNight.setTime(0.5);
+
+  const shadows = new ShadowSystem(sun);
+
+  const islandData = buildIslandData({ seed: ISLAND_SEED, size: ISLAND_SIZE });
+  const terrain = new TerrainRenderer(scene, islandData, shadows);
+  const water = new WaterRenderer(scene, terrain.mesh);
+
+  const props = spawnProps(islandData);
+  console.info(`Spawned ${props.length} props`);
+  new PropRenderer(scene, props, shadows);
+
+  const grass = new GrassRenderer(scene, islandData);
+  console.info(`Spawned ${grass.count} grass clumps`);
+
+  const input = new InputManager(scene);
+
+  const player = new PlayerController(scene, camera, input, terrain, shadows);
+  const spawn = terrain.findSpawnPoint();
+  player.spawnAt(spawn);
+  void player.loadCharacter();
+
+  const survival = new SurvivalState();
+  const inv = new Inventory();
+  const equipment = new Equipment();
+  const pickups = new PickupRegistry();
+  const spawned = spawnPickups(islandData, pickups);
+  console.info(`Spawned ${spawned} pickups`);
+  const pickupRenderer = new PickupRenderer(scene, pickups, shadows);
+
+  const buildings = new BuildingRegistry();
+  const buildingRenderer = new BuildingRenderer(scene, buildings, shadows);
+
+  // Aliens — peaceful Scrunklers scattered, Glarn cluster around the ship,
+  // Vex elite at the ship itself.
+  const aliens = new AlienManager(ISLAND_SEED + 13);
+  const ship = getAlienShipPosition(islandData);
+  aliens.spawn("vex", ship.x + 2, ship.z - 1);
+  aliens.spawn("glarn", ship.x + 6, ship.z + 4);
+  aliens.spawn("glarn", ship.x - 5, ship.z + 3);
+  aliens.spawn("glarn", ship.x + 1, ship.z + 7);
+  aliens.spawn("scrunkler", spawn.x + 9, spawn.z + 4);
+  aliens.spawn("scrunkler", spawn.x - 12, spawn.z - 3);
+  aliens.spawn("scrunkler", spawn.x + 4, spawn.z - 11);
+  const alienRenderer = new AlienRenderer(scene, aliens, terrain, shadows);
+
+  const hud = new HudManager();
+  hud.setHotbarFromEquipment(equipment.hotbar, equipment.activeIndex);
+
+  const interactions = new InteractionDetector(
+    scene,
+    player.root,
+    input,
+    pickups,
+    pickupRenderer,
+    inv,
+    hud,
+  );
+
+  const buildMode = new BuildModeController(
+    scene,
+    camera,
+    input,
+    terrain,
+    buildings,
+    buildingRenderer,
+    inv,
+    hud,
+    player.root,
+  );
+
+  const combat = new CombatController(
+    input, aliens, alienRenderer, inv, equipment, survival, player.root, camera, hud,
+  );
+  const projectiles = new ProjectileSystem(
+    scene, camera, input, inv, equipment, aliens, player.root, terrain,
+  );
+  const weather = new WeatherSystem(scene, player.root, survival, inv);
+
+  const crafting = new CraftingMenu(inv, () => ({
+    nearbyStations: buildings.nearbyStations(player.root.position.x, player.root.position.z),
+  }));
+  const inventoryMenu = new InventoryMenu(inv);
+  new ControlsHelp();
+
+  configureRenderingPipeline(scene, camera);
+
+  scene.onBeforeRenderObservable.add(() => {
+    const dt = scene.getEngine().getDeltaTime() / 1000;
+
+    if (input.wasJustPressed("craft")) crafting.toggle();
+    if (input.wasJustPressed("inventory")) inventoryMenu.toggle();
+    if (input.wasJustPressed("cancel")) {
+      if (crafting.open) crafting.toggle(false);
+      if (inventoryMenu.open) inventoryMenu.toggle(false);
+    }
+    if (inventoryMenu.open) inventoryMenu.refresh();
+
+    // Hotbar slot select (1-9). Skip when build mode is using number keys.
+    if (!buildMode.active) {
+      for (let i = 0; i < 9; i++) {
+        const action = `slot${i + 1}` as
+          | "slot1" | "slot2" | "slot3" | "slot4" | "slot5"
+          | "slot6" | "slot7" | "slot8" | "slot9";
+        if (input.wasJustPressed(action)) {
+          equipment.setActive(i);
+        }
+      }
+    }
+
+    dayNight.tick(dt);
+    water.tick(dt);
+    grass.tick(dt);
+    player.tick(dt);
+    survival.tick(dt, { isMoving: player.isMoving(), isSprinting: player.isSprinting() });
+    pickupRenderer.tick(dt);
+    interactions.tick(buildMode.active || crafting.open || inventoryMenu.open);
+    buildMode.tick();
+    combat.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
+    projectiles.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
+    weather.tick(dt);
+
+    // Tiny camera-shake while a swing flash is active — reads combat.swingFlash
+    if (combat.swingFlash > 0) {
+      const k = combat.swingFlash * 0.10;
+      camera.target.x += (Math.random() - 0.5) * k;
+      camera.target.y += (Math.random() - 0.5) * k * 0.6;
+      camera.target.z += (Math.random() - 0.5) * k;
+    }
+
+    aliens.tick({
+      playerX: player.root.position.x,
+      playerZ: player.root.position.z,
+      dt,
+      applyPlayerDamage: (hp) => survival.consume({ hp: -hp }),
+    });
+    alienRenderer.tick();
+
+    const s = survival.snapshot();
+    hud.setBar("hp", s.hp);
+    hud.setBar("hunger", s.hunger);
+    hud.setBar("thirst", s.thirst);
+    hud.setBar("stamina", s.stamina);
+    hud.setInventoryStrip(inv);
+
+    // Sync hotbar from inventory + active slot
+    equipment.sync(inv);
+    hud.setHotbarFromEquipment(equipment.hotbar, equipment.activeIndex);
+
+    hud.updateCompass(camera.alpha);
+  });
+
+  scene.onAfterRenderObservable.addOnce(() => hud.hideLoading());
+
+  if (import.meta.env.DEV) {
+    (window as unknown as { __game: unknown }).__game = {
+      engine: sceneMgr.engine,
+      scene,
+      camera,
+      sun,
+      dayNight,
+      terrain,
+      water,
+      player,
+      survival,
+      inv,
+      pickups,
+      buildings,
+      buildMode,
+      crafting,
+      aliens,
+      alienRenderer,
+      combat,
+      equipment,
+      projectiles,
+      weather,
+    };
+  }
+
+  window.addEventListener("resize", () => sceneMgr.engine.resize());
+  sceneMgr.engine.runRenderLoop(() => scene.render());
+}
+
+bootstrap().catch((err) => {
+  console.error("Failed to start game:", err);
+  const overlay = document.getElementById("loading-overlay");
+  if (overlay) overlay.querySelector(".loader-text")!.textContent = "Failed to load — check console";
+});

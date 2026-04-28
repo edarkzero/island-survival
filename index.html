@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Island Survival</title>
+    <link rel="stylesheet" href="/src/ui/styles/hud.css" />
+  </head>
+  <body>
+    <canvas id="renderCanvas" touch-action="none"></canvas>
+    <div id="hud">
+      <div id="hud-top">
+        <div id="compass"><div id="compass-strip"></div></div>
+      </div>
+      <div id="hud-bottom-left" class="status-bars">
+        <div class="bar bar-hp"><span class="bar-label">HP</span><div class="bar-fill" style="--pct:1"></div></div>
+        <div class="bar bar-hunger"><span class="bar-label">Hunger</span><div class="bar-fill" style="--pct:1"></div></div>
+        <div class="bar bar-thirst"><span class="bar-label">Thirst</span><div class="bar-fill" style="--pct:1"></div></div>
+        <div class="bar bar-stamina"><span class="bar-label">Stamina</span><div class="bar-fill" style="--pct:1"></div></div>
+      </div>
+      <div id="hud-bottom-center">
+        <div id="interaction-prompt" hidden></div>
+      </div>
+      <div id="hud-bottom-right">
+        <div id="hotbar"></div>
+      </div>
+      <div id="loading-overlay">
+        <div class="loader-text">Generating island…</div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

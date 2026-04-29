@@ -220,6 +220,13 @@ html, body {
   line-height: 1.1;
   word-break: break-word;
 }
+.hotbar-slot img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  pointer-events: none;
+  image-rendering: auto;
+}
 .hotbar-slot.active {
   border-color: var(--hud-accent);
   box-shadow: 0 0 0 1px var(--hud-accent), 0 0 12px rgba(212, 178, 102, 0.3);

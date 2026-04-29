@@ -6,6 +6,7 @@
 import type { Inventory } from "../../game/systems/Inventory";
 import { ITEMS } from "../../game/data/items";
 import { BUILDINGS } from "../../game/data/buildings";
+import { iconUrlFor } from "./itemIcons";
 
 export interface HotbarSlotDef {
   num: number;
@@ -147,6 +148,7 @@ export class HudManager {
     const defs: HotbarSlotDef[] = slots.map((id, i) => ({
       num: i + 1,
       label: id ? shortItemName(id) : "",
+      iconUrl: id ? iconUrlFor(id) ?? undefined : undefined,
     }));
     this.setHotbarSlots(defs);
     this.setActiveHotbar(activeIndex);

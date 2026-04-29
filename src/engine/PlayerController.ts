@@ -31,6 +31,17 @@ export class PlayerController {
    * the animation is free to do what it wants without affecting yaw.
    */
   private yawWrapper: TransformNode | null = null;
+
+  /**
+   * Public anchor for held-item / accessory rendering. Returns the
+   * yaw-wrapper once the rigged character has loaded, falling back to the
+   * player root before then so callers don't need to wait. Held items
+   * parented here track player position + facing without picking up the
+   * character's animation-driven rotations.
+   */
+  get holdAnchor(): TransformNode {
+    return this.yawWrapper ?? this.root;
+  }
   private placeholderMesh: AbstractMesh | null;
   private characterRoot: AbstractMesh | null = null;
   private idleAnim: AnimationGroup | null = null;

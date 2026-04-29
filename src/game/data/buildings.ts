@@ -52,6 +52,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     ],
     size: { x: 1.2, y: 0.6, z: 1.2 },
     snapPoints: [],
+    modelPath: "/assets/models/buildings/Bonfire.obj",
   },
   workbench: {
     id: "workbench",

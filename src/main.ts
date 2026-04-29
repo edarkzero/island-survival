@@ -22,6 +22,7 @@ import { GrassRenderer } from "./engine/GrassRenderer";
 import { AlienManager } from "./game/systems/AlienManager";
 import { AlienRenderer } from "./engine/AlienRenderer";
 import { CombatController } from "./engine/CombatController";
+import { HeldItemRenderer } from "./engine/HeldItemRenderer";
 import { ProjectileSystem } from "./engine/ProjectileSystem";
 import { WeatherSystem } from "./engine/WeatherSystem";
 import { SurvivalState } from "./game/systems/SurvivalState";
@@ -29,7 +30,8 @@ import { InteractionDetector } from "./engine/InteractionDetector";
 import { Inventory } from "./game/systems/Inventory";
 import { Equipment } from "./game/systems/Equipment";
 import { BuildingRegistry } from "./game/systems/Building";
-import { BuildingRenderer } from "./engine/BuildingRenderer";
+import { BuildingRenderer, type BuildingModels } from "./engine/BuildingRenderer";
+import { BUILDINGS } from "./game/data/buildings";
 import { BuildModeController } from "./engine/BuildModeController";
 import { CraftingMenu } from "./ui/menus/CraftingMenu";
 import { InventoryMenu } from "./ui/menus/InventoryMenu";
@@ -111,30 +113,50 @@ async function bootstrap() {
   for (const [itemId, def] of Object.entries(ITEMS)) {
     if (!def.modelPath || def.modelPath.length === 0) continue;
     const loaded = await Promise.all(def.modelPath.map(tryLoad));
-    const variants = loaded
-      .map((meshes) => {
-        if (!meshes) return null;
-        const geo = meshes.filter(
-          (m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0,
-        );
-        // Hide the source meshes so they don't render at the origin —
-        // pickups use createInstance() to reference the geometry.
-        for (const m of geo) {
-          m.parent = null;
-          m.position.set(0, 0, 0);
-          m.rotation.set(0, 0, 0);
-          m.scaling.set(1, 1, 1);
-          m.setEnabled(false);
-        }
-        return geo.length > 0 ? { meshes: geo } : null;
-      })
-      .filter((v): v is { meshes: Mesh[] } => v !== null);
+    const variants: { meshes: Mesh[] }[] = [];
+    for (const meshes of loaded) {
+      if (!meshes) continue;
+      const geo = meshes.filter(
+        (m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0,
+      );
+      // Force-compile each material's shader effect against its source
+      // mesh BEFORE hiding it. Otherwise clones / instances inherit a
+      // never-compiled effect and silently render invisible (the OBJ
+      // pipeline doesn't compile materials until first render). After
+      // compilation it's safe to setEnabled(false) — the effect is cached.
+      for (const m of geo) {
+        m.parent = null;
+        if (m.material) await m.material.forceCompilationAsync(m);
+        m.setEnabled(false);
+      }
+      if (geo.length > 0) variants.push({ meshes: geo });
+    }
     if (variants.length > 0) pickupModels.set(itemId, variants);
   }
   const pickupRenderer = new PickupRenderer(scene, pickups, shadows, pickupModels);
 
   const buildings = new BuildingRegistry();
-  const buildingRenderer = new BuildingRenderer(scene, buildings, shadows);
+
+  // Pre-load every building model declared in buildings.ts. Same shape as
+  // the pickup loader: fail-soft per file, hide source meshes so they don't
+  // render at the origin (placed buildings use createInstance to share geo).
+  const buildingModels: BuildingModels = new Map();
+  for (const [buildingId, def] of Object.entries(BUILDINGS)) {
+    if (!def.modelPath) continue;
+    const meshes = await tryLoad(def.modelPath);
+    if (!meshes) continue;
+    const geo = meshes.filter(
+      (m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0,
+    );
+    if (geo.length === 0) continue;
+    for (const m of geo) {
+      m.parent = null;
+      if (m.material) await m.material.forceCompilationAsync(m);
+      m.setEnabled(false);
+    }
+    buildingModels.set(buildingId, { meshes: geo });
+  }
+  const buildingRenderer = new BuildingRenderer(scene, buildings, shadows, buildingModels);
 
   // Harvestable props: trees → wood, rocks → stone. Drops spawn as ground
   // pickups at the prop's location; visibility is mirrored on PropRenderer.
@@ -240,6 +262,13 @@ async function bootstrap() {
     input, aliens, alienRenderer, inv, equipment, survival, player.root, camera, hud, audio,
     harvestables,
   );
+  // Held-item visual: shares the pickup model map (createInstance over the
+  // same source meshes), so equipping wood/water_flask/stone_axe shows the
+  // real model in the player's hand. Tick before render to keep position
+  // fresh against the live yaw wrapper and combat swingFlash.
+  const heldItemRenderer = new HeldItemRenderer(
+    scene, equipment, combat, player, shadows, pickupModels,
+  );
   const projectiles = new ProjectileSystem(
     scene, camera, input, inv, equipment, aliens, player.root, terrain, audio,
   );
@@ -300,6 +329,7 @@ async function bootstrap() {
     buildMode.tick();
     harvestables.tick(performance.now() / 1000);
     combat.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
+    heldItemRenderer.tick(dt);
     projectiles.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
     weather.tick(dt);
 
@@ -370,11 +400,13 @@ async function bootstrap() {
       propRenderer,
       harvestables,
       buildings,
+      buildingRenderer,
       buildMode,
       crafting,
       aliens,
       alienRenderer,
       combat,
+      heldItemRenderer,
       equipment,
       projectiles,
       weather,

@@ -20,6 +20,20 @@ non-CC0 mistake is findable later.
 | ambientCG | https://ambientcg.com | CC0 | Extra PBR materials |
 | Mixamo | https://mixamo.com | Royalty-free for indie/commercial | Character animations |
 
+## Imported assets
+
+| Path | Source | License | Used For |
+|---|---|---|---|
+| `public/assets/models/flora/PineTree_{1..5}.{obj,mtl}` | Quaternius — Ultimate Nature Pack | CC0 | `tree_pine` props (PineTree_3 active) |
+| `public/assets/models/flora/Rock_{1..7}.{obj,mtl}` | Quaternius — Ultimate Nature Pack | CC0 | `rock_small` (1–3) and `rock_large` (4–7) variants |
+| `public/assets/models/props/{Axe,Axe_Small,Knife,Shovel}.{obj,mtl}` | Quaternius — Ultimate Survival Kit | CC0 | Tools — staged for `stone_axe` and future tool items |
+| `public/assets/models/props/{Backpack,Bandages,Compass_*,FirstAidKit*}.{obj,mtl}` | Quaternius — Ultimate Survival Kit | CC0 | Survival items — staged for future inventory upgrades / consumables |
+| `public/assets/models/props/{Match*,Matchbox,Pan*,Pot*}.{obj,mtl}` | Quaternius — Ultimate Survival Kit | CC0 | Fire-starting + cooking — staged for future cooking station |
+| `public/assets/models/props/{WaterBottle_*}.{obj,mtl}` | Quaternius — Ultimate Survival Kit | CC0 | `water_flask` model variants |
+| `public/assets/models/props/{WoodLog}.{obj,mtl}` | Quaternius — Ultimate Survival Kit | CC0 | Resource pickup — staged for `wood` |
+| `public/assets/models/props/{WoodenTorch,WoodenTorch_Fire,Raft,Raft_Paddle}.{obj,mtl}` | Quaternius — Ultimate Survival Kit | CC0 | Light source + future raft escape vehicle |
+| `public/assets/models/buildings/{Bonfire,Bonfire_Fire,Tent,BearTrap_*}.{obj,mtl}` | Quaternius — Ultimate Survival Kit | CC0 | Placeable structures — staged for buildable campfire / shelter / trap |
+
 ## In-tree placeholders (temporary)
 
 | Asset | Source | Status |

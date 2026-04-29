@@ -11,13 +11,14 @@ const WATER_TEXTURE_URL =
   "https://playground.babylonjs.com/textures/waterbump.png";
 const FOAM_TEX_URL = "https://playground.babylonjs.com/textures/flare.png";
 
-const WATER_Y = -2.5;
-const FOAM_Y = -2.05; // sits just above the water plane so wisps read above the surface
+const WATER_Y = 0.0;
+const FOAM_Y = 0.45; // just above the water plane so wisps read above the surface
 
 /**
- * Border ocean ringing the island. Sits well below land so the cliff stands
- * proud above the waterline; calm waves and saturated blue read as a real
- * ocean rather than a flooded valley.
+ * Tropical ocean ringing the island. Big swell + sharp specular sparkle +
+ * turquoise color + island reflection — the original look the player liked
+ * before water was over-calmed. Sits at sea level (y=0) so it laps right up
+ * to the cliff base (LAND_FLOOR=1.2), giving the island a clean shoreline.
  *
  * Shore foam: a particle ring driven from the actual coastline (heightmap
  * cells where land meets water), so the wisps follow the noisy shoreline
@@ -30,28 +31,23 @@ export class WaterRenderer {
   constructor(scene: Scene, data: IslandData) {
     this.mesh = MeshBuilder.CreateGround(
       "water",
-      { width: 800, height: 800, subdivisions: 24 },
+      { width: 1200, height: 1200, subdivisions: 32 },
       scene,
     );
-    // Sit at the underwater shelf depth so the cliff face above (land base
-    // at y=1.2) is a tall, clearly visible bank — never confuses with land.
     this.mesh.position.y = WATER_Y;
     this.mesh.isPickable = false;
 
     const water = new WaterMaterial("waterMat", scene, new Vector2(512, 512));
     water.bumpTexture = new Texture(WATER_TEXTURE_URL, scene);
-    water.windForce = -3;
-    water.waveHeight = 0.05;
-    water.bumpHeight = 0.15;
-    water.waveLength = 0.3;
-    water.waveSpeed = 18;
-    // Saturated true ocean blue, opaque enough to never read as transparent.
-    water.colorBlendFactor = 0.1;
-    water.waterColor = new Color3(0.06, 0.30, 0.62);
+    water.windForce = -10;
+    water.waveHeight = 0.32; // big swell
+    water.bumpHeight = 1.1; // sharp specular highlights = sparkle
+    water.waveLength = 0.22;
+    water.waveSpeed = 60;
+    // Less reflection blend → more saturated turquoise color shows through.
+    water.colorBlendFactor = 0.18;
+    water.waterColor = new Color3(0.05, 0.42, 0.55); // tropical turquoise
     water.windDirection = new Vector2(1, 0.6);
-    // Intentionally NOT adding the terrain to the water reflection list.
-    // Reflecting land into the water surface created visual confusion at
-    // the shoreline; a sky-only reflection reads as a cleaner ocean.
 
     this.material = water;
     this.mesh.material = water;

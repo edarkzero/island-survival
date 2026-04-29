@@ -321,6 +321,59 @@ export class Audio {
     osc.stop(ctx.currentTime + dur);
   }
 
+  /**
+   * Axe chop on wood. Tries `chop` asset first, falls back to a low-mid
+   * filtered noise burst with a slight pitch ramp — wooden thwack.
+   */
+  playChop() {
+    if (this.playRandom("chop")) return;
+    const ctx = this.getSynthCtx();
+    if (!ctx) return;
+    const dur = 0.16;
+    const buf = this.makeNoiseBuffer(ctx, dur);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(900, ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(380, ctx.currentTime + dur);
+    filter.Q.value = 1.6;
+    const gain = ctx.createGain();
+    const peak = 0.36 * this.volumes.sfx * this.volumes.master;
+    gain.gain.setValueAtTime(peak, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0005, ctx.currentTime + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+  }
+
+  /**
+   * Pickaxe strike on stone. Tries `mining` asset first, falls back to a
+   * sharper high-pass click — rocky pickaxe ping.
+   */
+  playMining() {
+    if (this.playRandom("mining")) return;
+    const ctx = this.getSynthCtx();
+    if (!ctx) return;
+    const dur = 0.12;
+    const buf = this.makeNoiseBuffer(ctx, dur);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "highpass";
+    filter.frequency.value = 1800;
+    filter.Q.value = 1.0;
+    const gain = ctx.createGain();
+    const peak = 0.32 * this.volumes.sfx * this.volumes.master;
+    gain.gain.setValueAtTime(peak, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0005, ctx.currentTime + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+  }
+
   /** Craft success. Tries `craft/success` asset first, falls back to a two-note ascending chime. */
   playCraftSuccess() {
     if (this.playRandom("craft/success")) return;

@@ -84,6 +84,16 @@ If the terrain again starts looking "transparent / floating," **first** verify `
 - **Hook points.** Most game systems take `audio` as a constructor parameter and call inline (e.g. `CombatController` calls `audio.playSwing(atk.kind)` and `audio.playHit("flesh")`). `CraftingMenu` uses a hook callback (`hooks.onCraftSuccess`) instead so `src/ui/` doesn't import from `src/engine/`. The biome poll + footstep stride accumulator live in `main.ts` because they read `terrain.biomeAt()` + `player.isMoving()`.
 - **Synth-only events today.** `setAmbientSynth(biome)` and `setRain(on)` have no asset path — Kenney RPG Audio is SFX-only. They stay procedural until ambient stems are sourced separately.
 
+### Harvestable props
+
+`tree_pine` and `rock_*` props can be chopped/mined for resources via `src/game/systems/HarvestableProps.ts` (engine-agnostic state machine). Per-kind config lives in `src/game/data/harvestables.ts` (hp, required tool, drop spec, respawn seconds). The `CombatController` attack input falls through to a harvest target if no alien is in front. On depletion, drops spawn as ground pickups via the existing `PickupRegistry`, and `PropRenderer.setVisible(propIndex, false)` zero-scales that prop's thin-instance matrix. After `respawnSec` (30s in tests; tune per-kind), state flips back to `alive` and the original matrix is restored. The state machine is independent of any rendering — the engine layer only sees `onDrop` and `onVisibilityChange` callbacks.
+
+`scripts/harvest-test.mjs` is the e2e regression: equip an axe, chop the nearest tree, assert depletion + drops, wait, assert respawn.
+
 ### Asset story
 
 All gameplay assets are intended to be CC0 (Quaternius / Kenney / Poly Haven / ambientCG / Mixamo). Assets live under `public/assets/{models,textures,hdri,audio,lut}` with `models/` further split by category. Track every drop-in in `ATTRIBUTIONS.md` even though everything is CC0 — that's how a non-CC0 file slipping in becomes findable. The character model and the water bump texture are currently loaded from Babylon's CDN (`assets.babylonjs.com`, `playground.babylonjs.com`) as a temporary convenience.
+
+### Model loading pattern
+
+`AssetLoader.loadGlb(url, scene)` is the single cached entry point — works for both `.glb` and `.obj` once `@babylonjs/loaders/OBJ` is side-effect-imported (done in `main.ts`). Pre-load at boot, pass loaded meshes into the renderer, never await mid-render. The `PropRenderer` shows the canonical pattern: accept a `PropModels` object with arrays of variants per kind, deterministically bucket each instance via `propIndex % numVariants`, build one thin-instance buffer per variant, and fall back to a procedural primitive if the load fails. Pickup, building, and held-item renderers should mirror this shape (see `.claude/plans/i-think-that-the-quiet-flute.md` for the slice roadmap).

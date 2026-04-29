@@ -34,8 +34,12 @@ export interface ItemDef {
   name: string;
   type: ItemTypeId;
   stackSize: number;
-  /** Path under /public/assets/models — referenced when a 3D model is needed. */
-  modelPath?: string;
+  /**
+   * Paths under /public/assets/models — one per visual variant. PickupRenderer
+   * picks a variant per pickup via `pickupId % variants.length`. A single-entry
+   * array is fine for items with no variation.
+   */
+  modelPath?: string[];
   iconPath?: string;
   equipSlot?: EquipSlotId;
   damage?: number;
@@ -46,7 +50,13 @@ export interface ItemDef {
 }
 
 export const ITEMS: Record<string, ItemDef> = {
-  wood: { id: "wood", name: "Wood", type: ItemType.Resource, stackSize: 64 },
+  wood: {
+    id: "wood",
+    name: "Wood",
+    type: ItemType.Resource,
+    stackSize: 64,
+    modelPath: ["/assets/models/props/WoodLog.obj"],
+  },
   stone: { id: "stone", name: "Stone", type: ItemType.Resource, stackSize: 64 },
   fiber: { id: "fiber", name: "Fiber", type: ItemType.Resource, stackSize: 64 },
   iron_ore: { id: "iron_ore", name: "Iron Ore", type: ItemType.Resource, stackSize: 32 },
@@ -78,6 +88,11 @@ export const ITEMS: Record<string, ItemDef> = {
     type: ItemType.Consumable,
     stackSize: 4,
     consume: { thirst: 40 },
+    modelPath: [
+      "/assets/models/props/WaterBottle_1.obj",
+      "/assets/models/props/WaterBottle_2.obj",
+      "/assets/models/props/WaterBottle_3.obj",
+    ],
   },
 
   stone_axe: {
@@ -88,6 +103,7 @@ export const ITEMS: Record<string, ItemDef> = {
     equipSlot: EquipSlot.MainHand,
     damage: 6,
     damageKind: DamageKind.Blunt,
+    modelPath: ["/assets/models/props/Axe.obj"],
   },
   iron_sword: {
     id: "iron_sword",

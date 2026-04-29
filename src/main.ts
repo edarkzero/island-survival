@@ -1,4 +1,6 @@
 import "@babylonjs/loaders/glTF";
+import "@babylonjs/loaders/OBJ";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { SceneManager } from "./engine/SceneManager";
 import { configureRenderingPipeline } from "./engine/RenderingPipeline";
 import { InputManager } from "./engine/InputManager";
@@ -10,9 +12,12 @@ import { DayNightCycle } from "./engine/DayNightCycle";
 import { PlayerController } from "./engine/PlayerController";
 import { PickupRegistry } from "./game/systems/PickupRegistry";
 import { spawnPickups } from "./game/world/PickupSpawner";
-import { PickupRenderer } from "./engine/PickupRenderer";
+import { PickupRenderer, type PickupModels } from "./engine/PickupRenderer";
+import { ITEMS } from "./game/data/items";
 import { spawnProps, getAlienShipPosition } from "./game/world/PropSpawner";
 import { PropRenderer } from "./engine/PropRenderer";
+import { loadGlb } from "./engine/AssetLoader";
+import { HarvestableProps } from "./game/systems/HarvestableProps";
 import { GrassRenderer } from "./engine/GrassRenderer";
 import { AlienManager } from "./game/systems/AlienManager";
 import { AlienRenderer } from "./engine/AlienRenderer";
@@ -55,7 +60,32 @@ async function bootstrap() {
 
   const props = spawnProps(islandData);
   console.info(`Spawned ${props.length} props`);
-  new PropRenderer(scene, props, shadows);
+
+  // Load all Quaternius prop variants in parallel. PropRenderer buckets
+  // each instance to a variant deterministically so the forest looks
+  // heterogeneous. Per-file failure is non-fatal — the renderer either uses
+  // the survivors or falls back to its procedural primitive.
+  const tryLoad = async (url: string) => {
+    try { return await loadGlb(url, scene); } catch (e) {
+      console.warn(`prop model load failed: ${url}`, e);
+      return null;
+    }
+  };
+  const treeUrls = [1, 2, 3, 4, 5].map((n) => `/assets/models/flora/PineTree_${n}.obj`);
+  // Rocks 1–3 are smaller-mesh variants; 4–7 are larger. Adjust if a
+  // particular Rock_N looks the wrong scale at small/large prop sites.
+  const rockSmallUrls = [1, 2, 3].map((n) => `/assets/models/flora/Rock_${n}.obj`);
+  const rockLargeUrls = [4, 5, 6, 7].map((n) => `/assets/models/flora/Rock_${n}.obj`);
+  const [treeVariants, rockSmallVariants, rockLargeVariants] = await Promise.all([
+    Promise.all(treeUrls.map(tryLoad)),
+    Promise.all(rockSmallUrls.map(tryLoad)),
+    Promise.all(rockLargeUrls.map(tryLoad)),
+  ]);
+  const propRenderer = new PropRenderer(scene, props, shadows, {
+    treeVariants,
+    rockSmallVariants,
+    rockLargeVariants,
+  });
 
   const grass = new GrassRenderer(scene, islandData);
   console.info(`Spawned ${grass.count} grass clumps`);
@@ -73,10 +103,53 @@ async function bootstrap() {
   const pickups = new PickupRegistry();
   const spawned = spawnPickups(islandData, pickups);
   console.info(`Spawned ${spawned} pickups`);
-  const pickupRenderer = new PickupRenderer(scene, pickups, shadows);
+
+  // Pre-load every item model declared in items.ts. Each entry is an array
+  // of variant URLs; the resulting Map<itemId, variant[]> is consumed by
+  // PickupRenderer. Items without modelPath keep their colored sphere.
+  const pickupModels: PickupModels = new Map();
+  for (const [itemId, def] of Object.entries(ITEMS)) {
+    if (!def.modelPath || def.modelPath.length === 0) continue;
+    const loaded = await Promise.all(def.modelPath.map(tryLoad));
+    const variants = loaded
+      .map((meshes) => {
+        if (!meshes) return null;
+        const geo = meshes.filter(
+          (m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0,
+        );
+        // Hide the source meshes so they don't render at the origin —
+        // pickups use createInstance() to reference the geometry.
+        for (const m of geo) {
+          m.parent = null;
+          m.position.set(0, 0, 0);
+          m.rotation.set(0, 0, 0);
+          m.scaling.set(1, 1, 1);
+          m.setEnabled(false);
+        }
+        return geo.length > 0 ? { meshes: geo } : null;
+      })
+      .filter((v): v is { meshes: Mesh[] } => v !== null);
+    if (variants.length > 0) pickupModels.set(itemId, variants);
+  }
+  const pickupRenderer = new PickupRenderer(scene, pickups, shadows, pickupModels);
 
   const buildings = new BuildingRegistry();
   const buildingRenderer = new BuildingRenderer(scene, buildings, shadows);
+
+  // Harvestable props: trees → wood, rocks → stone. Drops spawn as ground
+  // pickups at the prop's location; visibility is mirrored on PropRenderer.
+  const harvestables = new HarvestableProps(
+    props,
+    (itemId, count, x, y, z) => {
+      for (let i = 0; i < count; i++) {
+        const jx = (Math.random() - 0.5) * 1.4;
+        const jz = (Math.random() - 0.5) * 1.4;
+        const drop = pickups.add(itemId, x + jx, y, z + jz);
+        pickupRenderer.spawn(drop);
+      }
+    },
+    (propIndex, visible) => propRenderer.setVisible(propIndex, visible),
+  );
 
   // Aliens — peaceful Scrunklers scattered, Glarn cluster around the ship,
   // Vex elite at the ship itself.
@@ -165,6 +238,7 @@ async function bootstrap() {
 
   const combat = new CombatController(
     input, aliens, alienRenderer, inv, equipment, survival, player.root, camera, hud, audio,
+    harvestables,
   );
   const projectiles = new ProjectileSystem(
     scene, camera, input, inv, equipment, aliens, player.root, terrain, audio,
@@ -224,6 +298,7 @@ async function bootstrap() {
     pickupRenderer.tick(dt);
     interactions.tick(buildMode.active || crafting.open || inventoryMenu.open);
     buildMode.tick();
+    harvestables.tick(performance.now() / 1000);
     combat.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
     projectiles.tick(dt, buildMode.active || crafting.open || inventoryMenu.open);
     weather.tick(dt);
@@ -291,6 +366,9 @@ async function bootstrap() {
       survival,
       inv,
       pickups,
+      pickupRenderer,
+      propRenderer,
+      harvestables,
       buildings,
       buildMode,
       crafting,

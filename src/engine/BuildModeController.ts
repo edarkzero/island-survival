@@ -12,7 +12,16 @@ import type { HudManager } from "../ui/hud/HudManager";
 import type { Audio } from "./Audio";
 import { BUILDINGS } from "../game/data/buildings";
 
-const PLACEABLES = ["foundation", "wall", "roof", "campfire", "workbench", "forge"];
+const PLACEABLES = [
+  "foundation",
+  "wall",
+  "roof",
+  "campfire",
+  "workbench",
+  "forge",
+  "tent",
+  "bear_trap",
+];
 const REACH = 7.5;
 
 /**
@@ -84,10 +93,12 @@ export class BuildModeController {
     if (this.input.wasJustPressed("build")) this.toggle();
     if (!this.active) return;
 
-    // Number keys 1..6 to swap placeable
+    // Number keys 1..8 to swap placeable. The hotbar registers slot1..slot9
+    // edges; build mode just picks off the first PLACEABLES.length of them.
     for (let i = 0; i < PLACEABLES.length; i++) {
       const action = (`slot${i + 1}`) as
-        | "slot1" | "slot2" | "slot3" | "slot4" | "slot5" | "slot6";
+        | "slot1" | "slot2" | "slot3" | "slot4" | "slot5"
+        | "slot6" | "slot7" | "slot8" | "slot9";
       if (this.input.wasJustPressed(action)) {
         this.currentIdx = i;
         this.hud.setBuildModeBar(PLACEABLES, this.currentIdx);

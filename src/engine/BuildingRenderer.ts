@@ -23,7 +23,10 @@ const COLORS: Record<string, [number, number, number]> = {
 // Per-building uniform scale for model-backed renders. Quaternius packs ship
 // at varied real-world scales — adjust here when a placed structure reads
 // the wrong size relative to the player. Default = 1.0.
-const MODEL_SCALES: Record<string, number> = {};
+const MODEL_SCALES: Record<string, number> = {
+  tent: 0.22,
+  bear_trap: 0.5,
+};
 
 /**
  * One loaded building model — the geometry-bearing meshes ready to be

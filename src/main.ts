@@ -20,7 +20,9 @@ import { loadGlb } from "./engine/AssetLoader";
 import { HarvestableProps } from "./game/systems/HarvestableProps";
 import { GrassRenderer } from "./engine/GrassRenderer";
 import { AlienManager } from "./game/systems/AlienManager";
-import { AlienRenderer } from "./engine/AlienRenderer";
+import { AlienRenderer, type AlienModels } from "./engine/AlienRenderer";
+import { ALIENS } from "./game/data/aliens";
+import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { CombatController } from "./engine/CombatController";
 import { HeldItemRenderer } from "./engine/HeldItemRenderer";
 import { ProjectileSystem } from "./engine/ProjectileSystem";
@@ -184,7 +186,25 @@ async function bootstrap() {
   aliens.spawn("scrunkler", spawn.x + 9, spawn.z + 4);
   aliens.spawn("scrunkler", spawn.x - 12, spawn.z - 3);
   aliens.spawn("scrunkler", spawn.x + 4, spawn.z - 11);
-  const alienRenderer = new AlienRenderer(scene, aliens, terrain, shadows);
+
+  // Pre-load each alien archetype as an AssetContainer so each agent can
+  // be instantiated with its own skeleton + animation groups via
+  // `instantiateModelsToScene`. Failure here is non-fatal — AlienRenderer
+  // falls back to its procedural capsule + head when a defId is missing.
+  const alienModels: AlienModels = new Map();
+  for (const [defId, def] of Object.entries(ALIENS)) {
+    if (!def.modelPath) continue;
+    try {
+      const lastSlash = def.modelPath.lastIndexOf("/");
+      const rootUrl = def.modelPath.slice(0, lastSlash + 1);
+      const file = def.modelPath.slice(lastSlash + 1);
+      const container = await SceneLoader.LoadAssetContainerAsync(rootUrl, file, scene);
+      alienModels.set(defId, container);
+    } catch (e) {
+      console.warn(`alien model load failed: ${def.modelPath}`, e);
+    }
+  }
+  const alienRenderer = new AlienRenderer(scene, aliens, terrain, shadows, alienModels);
 
   const hud = new HudManager();
   hud.setHotbarFromEquipment(equipment.hotbar, equipment.activeIndex);

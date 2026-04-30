@@ -63,6 +63,7 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     ],
     size: { x: 1.6, y: 1, z: 0.8 },
     snapPoints: [],
+    modelPath: "/assets/models/buildings/workbench.glb",
   },
   forge: {
     id: "forge",
@@ -73,5 +74,27 @@ export const BUILDINGS: Record<string, BuildingDef> = {
     ],
     size: { x: 1.4, y: 1.6, z: 1.4 },
     snapPoints: [],
+  },
+  tent: {
+    id: "tent",
+    name: "Tent",
+    cost: [
+      { itemId: "wood", qty: 6 },
+      { itemId: "fiber", qty: 4 },
+    ],
+    size: { x: 2.4, y: 1.4, z: 1.6 },
+    snapPoints: [],
+    modelPath: "/assets/models/buildings/Tent.obj",
+  },
+  bear_trap: {
+    id: "bear_trap",
+    name: "Bear Trap",
+    cost: [
+      { itemId: "iron_ingot", qty: 1 },
+      { itemId: "fiber", qty: 2 },
+    ],
+    size: { x: 0.8, y: 0.4, z: 0.8 },
+    snapPoints: [],
+    modelPath: "/assets/models/buildings/BearTrap_Open.obj",
   },
 };

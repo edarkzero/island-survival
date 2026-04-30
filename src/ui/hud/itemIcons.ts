@@ -1,13 +1,40 @@
 /**
- * Procedural hotbar icons. Each item gets a 64×64 SVG with a colored
- * backdrop and a one-letter glyph (typically the item's leading initials).
- * Cheap, scales crisply, and ships before any PNG icon pack is sourced —
- * once a real CC0 icon set lands, swap the implementation to return paths
- * under `/public/assets/icons/` keyed by `itemId`. Cached per id so HUD
- * re-renders don't rebuild the same string.
+ * Hotbar icons. Each item id resolves first to a PNG under
+ * `/assets/icons/{itemId}.png` (Kenney CC0 set, dropped at staging); ids
+ * without a PNG fall back to a procedurally-generated 64×64 SVG with a
+ * colored backdrop + 2-letter glyph so unknown items still show
+ * something. Cached per id so HUD re-renders don't rebuild the same
+ * string.
  */
 
 import { ITEMS } from "../../game/data/items";
+
+/**
+ * Item ids that have a real PNG on disk under `public/assets/icons/`.
+ * Update this set when new icons land — anything in here returns the
+ * `/assets/icons/...png` URL; anything outside falls through to the SVG
+ * generator below.
+ */
+const PNG_ICON_IDS = new Set([
+  "wood",
+  "stone",
+  "fiber",
+  "iron_ore",
+  "iron_ingot",
+  "alien_crystal",
+  "berry",
+  "cooked_meat",
+  "water_flask",
+  "stone_axe",
+  "iron_sword",
+  "iron_pike",
+  "wooden_club",
+  "sleep_dart",
+  "leather_chest",
+  "iron_helm",
+  "shiny_trinket",
+  "bioluminescent_moss",
+]);
 
 interface IconStyle {
   /** Tailwind-ish srgb in [0,1] — matches the engine-side palette. */
@@ -60,12 +87,20 @@ function fgFor([r, g, b]: [number, number, number]): string {
 }
 
 /**
- * Returns a `data:image/svg+xml,...` URL for the given itemId, or null if
- * no style is registered (HUD will fall back to a text label).
+ * Returns a URL the HUD `<img>` can render for the given itemId — a real
+ * PNG path if the icon was staged on disk, otherwise a procedurally
+ * generated SVG data URL. Returns null if neither path applies (HUD then
+ * falls back to a text label).
  */
 export function iconUrlFor(itemId: string): string | null {
   const cached = cache.get(itemId);
   if (cached !== undefined) return cached || null;
+
+  if (PNG_ICON_IDS.has(itemId)) {
+    const url = `/assets/icons/${itemId}.png`;
+    cache.set(itemId, url);
+    return url;
+  }
 
   const style = STYLES[itemId];
   if (!style) {

@@ -18,9 +18,12 @@ const GRAVITY = -18;
 const PLAYER_HEIGHT = 1.8;
 const PLAYER_RADIUS = 0.4;
 const TURN_LERP = 60; // essentially instant — character locks to camera-forward
-const CHARACTER_URL_ROOT = "https://assets.babylonjs.com/meshes/";
-const CHARACTER_URL_FILE = "HVGirl.glb";
-const CHARACTER_SCALE = 0.08; // HVGirl is ~22u tall by default → ~1.8m
+const CHARACTER_URL_ROOT = "/assets/models/characters/";
+const CHARACTER_URL_FILE = "player.gltf";
+// Quaternius-style rig authored at ~1.8m native height — no down-scaling.
+// If the rig is swapped for one at a different native height, retune here
+// (HVGirl was 22u → 0.08; pure unit rigs are 1.0).
+const CHARACTER_SCALE = 1.0;
 
 export class PlayerController {
   readonly root: TransformNode;

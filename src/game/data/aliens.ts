@@ -35,6 +35,7 @@ export const ALIENS: Record<string, AlienDef> = {
       { itemId: "shiny_trinket", weight: 2 },
       { itemId: "bioluminescent_moss", weight: 1 },
     ],
+    modelPath: "/assets/models/aliens/scrunkler.glb",
   },
   glarn: {
     id: "glarn",
@@ -47,6 +48,7 @@ export const ALIENS: Record<string, AlienDef> = {
       { itemId: "alien_crystal", weight: 2 },
       { itemId: "shiny_trinket", weight: 1 },
     ],
+    modelPath: "/assets/models/aliens/glarn.glb",
   },
   vex: {
     id: "vex",
@@ -58,5 +60,6 @@ export const ALIENS: Record<string, AlienDef> = {
       { itemId: "alien_crystal", weight: 4 },
       { itemId: "iron_pike", weight: 1 },
     ],
+    modelPath: "/assets/models/aliens/vex.glb",
   },
 };

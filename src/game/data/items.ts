@@ -74,6 +74,7 @@ export const ITEMS: Record<string, ItemDef> = {
     type: ItemType.Consumable,
     stackSize: 32,
     consume: { hunger: 12 },
+    modelPath: ["/assets/models/fauna/berries.glb"],
   },
   cooked_meat: {
     id: "cooked_meat",
@@ -113,6 +114,7 @@ export const ITEMS: Record<string, ItemDef> = {
     equipSlot: EquipSlot.MainHand,
     damage: 18,
     damageKind: DamageKind.Bladed,
+    modelPath: ["/assets/models/props/Knife.obj"],
   },
   iron_pike: {
     id: "iron_pike",

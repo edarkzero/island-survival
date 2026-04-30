@@ -13,9 +13,11 @@ import type { Equipment } from "../game/systems/Equipment";
 
 // Local-space offset of the held item relative to the yaw-wrapper.
 // The wrapper rotates with `facing + π`, so the character's "forward"
-// is local -Z. A right-hand grip lives at +X, head height ~1.1m, with
-// the item nudged forward of the body so it isn't clipped by the torso.
-const HAND_OFFSET = new Vector3(0.45, 1.05, -0.2);
+// is local -Z. The Peasant rig ships in T-pose (no idle animation in the
+// staged gltf) — that puts the right hand near (0.65, 1.35, 0). We park
+// the held item there. If/when an Idle animation lands, retune to track
+// the animated hand position.
+const HAND_OFFSET = new Vector3(0.65, 1.35, 0);
 
 // Per-item local tweaks layered on top of HAND_OFFSET. Position is added,
 // rotation replaces the held-item base rotation (then the swing arc is
@@ -25,9 +27,13 @@ const ITEM_TWEAKS: Record<
   string,
   { pos?: [number, number, number]; rot?: [number, number, number]; scale?: number }
 > = {
-  stone_axe: { pos: [0, 0, 0], rot: [0, 0, 0], scale: 0.4 },
-  water_flask: { pos: [0, 0, 0], rot: [0, 0, 0], scale: 0.6 },
-  wood: { pos: [0, 0.05, 0], rot: [0, 0, Math.PI / 2], scale: 0.35 },
+  // Axe: small backward tilt so the head rests against the shoulder, plus
+  // a slight side rotation so the blade plane reads from camera angle.
+  stone_axe: { pos: [0, 0, 0], rot: [-Math.PI / 12, Math.PI / 8, 0], scale: 0.32 },
+  // Sword (Knife.obj): blade up at rest, swing arc extends it forward.
+  iron_sword: { pos: [0, 0.05, 0], rot: [-Math.PI / 8, Math.PI / 8, 0], scale: 0.5 },
+  water_flask: { pos: [0, 0.1, 0], rot: [0, 0, 0], scale: 0.55 },
+  wood: { pos: [0, 0.1, 0], rot: [0, 0, Math.PI / 2], scale: 0.3 },
 };
 
 const SWING_PEAK_RAD = -Math.PI * 0.55;

@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Open work:** before starting anything substantial, scan `ROADMAP.md` —
+> it's the canonical inventory of pending tasks, recommended polish, and
+> staged-but-unwired CC0 assets. Many "small wins" are one-line wires
+> against assets that already live under `public/assets/`.
+
 ## Commands
 
 ```bash
@@ -60,6 +65,7 @@ Modal UI gating: `combat`, `projectiles`, `interactions`, and `buildMode.tick()`
 - **Vite is pinned to 5.x.** Vite 8 + Node 20.18 hits a rolldown native-binding crash. Don't bump.
 - **Active item resolution.** Combat reads from `Equipment.activeItem()` (the hotbar slot the player chose) — NOT a damage-priority scan. Number keys 1–9 set the active slot.
 - **Babylon `AudioEngine` requires explicit setup.** `SceneManager` imports `@babylonjs/core/Audio/audioEngine` (registers the factory) AND passes `audioEngine: true` in engine options. Both are required — without the import the factory is missing; without the option the engine never instantiates. Sound class playback won't work until both are present.
+- **OBJ-loaded materials silently fail to render on hidden source meshes.** When you load an OBJ with `@babylonjs/loaders/OBJ`, the materials' shader effects don't compile until first render. If you then `setEnabled(false)` on the source mesh and call `Mesh.createInstance()` or `Mesh.clone()` on it, the instance/clone reuses the never-compiled effect and renders **invisible** (no error, no warning — just nothing on screen). Two known fixes: (a) call `material.forceCompilationAsync(sourceMesh)` BEFORE hiding the source — used in `src/main.ts` for pickups + buildings; (b) clone the mesh AND replace its material with a fresh `StandardMaterial` — used in `src/engine/HeldItemRenderer.ts:freshMaterialFrom`. If a new renderer ever needs to instance an OBJ source and items don't show up, this is the first thing to check.
 
 ### Terrain / water layering
 
